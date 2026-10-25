@@ -1,10 +1,11 @@
-// Builds two self-contained static sites: dist/vault and dist/codes.
-// Each can be deployed on its own domain. No bundler or network access needed.
+// Builds the static sites: dist/vault and dist/codes (each deployable on its own),
+// and dist/site: the landing page with both apps inside it at /vault/ and /codes/.
+// No bundler or network access needed.
 import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { netlifyHeaders, vercelConfig } from './headers.mjs';
+import { SITE_REVALIDATE_PATHS, netlifyHeaders, vercelConfig } from './headers.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -79,9 +80,42 @@ async function assertNoRemoteUrls() {
   if (problems.length) throw new Error(`Remote URLs found:\n${problems.join('\n')}`);
 }
 
+// Landing page + video, with both apps nested so one deploy serves everything.
+async function buildSite() {
+  const src = join(root, 'site');
+  const out = join(dist, 'site');
+  await mkdir(join(out, 'assets'), { recursive: true });
+  for (const name of ['index.html', 'site.css', 'site.js']) await cp(join(src, name), join(out, name));
+  await cp(join(root, 'shared', 'fonts'), join(out, 'fonts'), { recursive: true });
+  await cp(join(root, 'vault', 'icons', 'icon.svg'), join(out, 'assets', 'vault.svg'));
+  await cp(join(root, 'codes', 'icons', 'icon.svg'), join(out, 'assets', 'codes.svg'));
+  await mkdir(join(out, 'media'), { recursive: true });
+  for (const name of ['how-it-works.mp4', 'poster.jpg']) {
+    try {
+      await cp(join(src, 'media', name), join(out, 'media', name));
+    } catch {
+      console.warn(`warning: site/media/${name} is missing; render the video first`);
+    }
+  }
+  for (const portal of PORTALS) await cp(join(dist, portal), join(out, portal), { recursive: true });
+  // Host config for the combined site replaces the per-app copies.
+  for (const portal of PORTALS) {
+    await rm(join(out, portal, 'vercel.json'), { force: true });
+    await rm(join(out, portal, '_headers'), { force: true });
+  }
+  await writeFile(join(out, '_headers'), netlifyHeaders(SITE_REVALIDATE_PATHS));
+  await writeFile(join(out, 'vercel.json'), `${JSON.stringify(vercelConfig(SITE_REVALIDATE_PATHS), null, 2)}
+`);
+  let bytes = 0;
+  for await (const path of walk(out)) bytes += (await stat(path)).size;
+  return Math.round(bytes / 1024 / 1024 * 10) / 10;
+}
+
 await rm(dist, { recursive: true, force: true });
 const results = [];
 for (const portal of PORTALS) results.push(await build(portal));
 await assertNoRemoteUrls();
+const siteMb = await buildSite();
 for (const r of results) console.log(`${r.portal}: ${r.files} files, ${r.kb} KB, cache version ${r.version}`);
+console.log(`site: landing page + /vault/ + /codes/, ${siteMb} MB`);
 console.log(`Built to ${dist}`);

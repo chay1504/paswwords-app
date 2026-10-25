@@ -21,7 +21,15 @@ npm run build     # writes dist/vault and dist/codes (about 0.5 MB each)
 npm run serve     # preview: Vault http://localhost:5173, Codes http://localhost:5174
 ```
 
-## Deploy (you do this; nothing is published automatically)
+## Landing site (one deploy for everything)
+
+`npm run build` also writes `dist/site`: the landing page with the how-to video, plus both apps inside it at `/vault/` and `/codes/`. Deploy that one folder (for example `cd dist/site && vercel --prod`) and the page's Install buttons open each app so it can be added to the home screen.
+
+- Landing source: `site/index.html`, `site/site.css`, `site/site.js`.
+- Video source: `site/video/` (a HyperFrames project). Re-render with `npx hyperframes render --workers 1 --crf 24 --output ../media/how-it-works.mp4` from that folder, then rebuild.
+- On one address the two apps keep separate storage (different databases and service-worker scopes), but they share an origin. Deploying `dist/vault` and `dist/codes` on their own addresses (below) keeps them fully separate; point the landing page's links at those addresses if you do.
+
+## Deploy the apps separately (optional, stronger isolation)
 
 Deploy `dist/vault` and `dist/codes` as **two separate sites on two different addresses**, over HTTPS, for example `vault.yourdomain.com` and `codes.yourdomain.com`. Different addresses give each app its own private storage and its own face-lock passkey. Face lock only works on HTTPS (or localhost).
 

@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>TBD Vault + TBD Codes: how it works</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: 'Manrope'; src: url('assets/fonts/Manrope.ttf') format('truetype'); font-weight: 200 800; }
+      @font-face { font-family: 'Bebas Neue'; src: url('assets/fonts/BebasNeue-Regular.ttf') format('truetype'); }
+      @font-face { font-family: 'IBM Plex Mono'; src: url('assets/fonts/IBMPlexMono-Regular.ttf') format('truetype'); }
+      :root {
+        --bg: #080808; --bg2: #121212; --bg3: #1c1c1c; --line: #2b2b2b;
+        --text: #f4f1ec; --muted: #a8a49d; --red: #f22d1c; --ok: #7ad39a;
+        --display: 'Bebas Neue', sans-serif; --body: 'Manrope', sans-serif; --mono: 'IBM Plex Mono', monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--body); }
+      .clip { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+      /* Background: faint grid and a slow red glow */
+      .bg-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(244,241,236,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(244,241,236,0.035) 1px, transparent 1px); background-size: 80px 80px; }
+      .bg-glow { position: absolute; width: 1400px; height: 1400px; left: 900px; top: -300px; border-radius: 50%; background: radial-gradient(circle, rgba(242,45,28,0.16), rgba(242,45,28,0) 62%); }
+
+      /* ---------- Intro / outro ---------- */
+      .center-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 34px; text-align: center; }
+      .icon-pair { display: flex; align-items: center; gap: 44px; }
+      .icon-pair img { display: block; width: 168px; height: 168px; border-radius: 40px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+      .icon-pair .plus { font-family: var(--display); font-size: 110px; color: var(--muted); line-height: 1; }
+      .big-title { font-family: var(--display); font-size: 150px; letter-spacing: 0.04em; line-height: 0.95; }
+      .big-title .red { color: var(--red); }
+      .tagline { font-size: 40px; color: var(--muted); max-width: 1300px; }
+      .pills { display: flex; gap: 18px; }
+      .pill { font-family: var(--mono); font-size: 26px; padding: 12px 24px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); background: var(--bg2); }
+
+      /* ---------- Stage ---------- */
+      .captions { position: absolute; left: 140px; top: 0; width: 720px; height: 1080px; }
+      .cap { position: absolute; left: 0; top: 330px; width: 720px; opacity: 0; visibility: hidden; }
+      .cap .num { font-family: var(--mono); font-size: 30px; color: var(--red); letter-spacing: 0.1em; }
+      .cap h2 { font-family: var(--display); font-weight: 400; font-size: 112px; line-height: 0.95; letter-spacing: 0.03em; margin-top: 14px; }
+      .cap p { font-size: 34px; line-height: 1.4; color: var(--muted); margin-top: 26px; max-width: 640px; }
+      .cap p b { color: var(--text); font-weight: 700; }
+      .progress { position: absolute; left: 140px; top: 840px; width: 640px; height: 6px; display: flex; gap: 10px; }
+      .progress span { display: block; flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+      .progress span.on { background: var(--red); }
+
+      .phones { position: absolute; left: 968px; top: 110px; width: 832px; height: 860px; display: flex; gap: 64px; }
+      .phone-wrap { width: 384px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+      .phone { position: relative; width: 384px; height: 780px; border-radius: 58px; background: #1a1a1a; padding: 12px; box-shadow: 0 40px 100px rgba(0,0,0,0.7), inset 0 0 0 2px #2e2e2e; }
+      .phone::before { content: ''; position: absolute; top: 24px; left: 50%; width: 110px; height: 30px; margin-left: -55px; border-radius: 15px; background: #050505; z-index: 20; }
+      .screen { position: relative; width: 360px; height: 756px; border-radius: 46px; overflow: hidden; background: var(--bg); }
+      .phone-label { font-family: var(--mono); font-size: 24px; color: var(--muted); display: flex; align-items: center; gap: 12px; }
+      .phone-label img { width: 34px; height: 34px; border-radius: 9px; }
+
+      /* App screens (match the real app UI) */
+      .scr { position: absolute; inset: 0; padding: 70px 22px 24px; display: flex; flex-direction: column; gap: 14px; opacity: 0; visibility: hidden; }
+      .brand { display: flex; align-items: center; gap: 10px; }
+      .brand img { width: 34px; height: 34px; border-radius: 9px; }
+      .brand b { font-family: var(--display); font-weight: 400; font-size: 26px; letter-spacing: 0.06em; }
+      .scr h3 { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: 0.03em; }
+      .muted { color: var(--muted); font-size: 15px; line-height: 1.45; }
+      .card { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      .btn { position: relative; display: flex; align-items: center; justify-content: center; height: 46px; border-radius: 12px; font-weight: 700; font-size: 15px; color: var(--text); border: 1px solid var(--line); }
+      .btn.primary { background: #c81e10; border-color: #c81e10; color: #fff; }
+      .btn.sec { border-color: var(--text); }
+      .btn.small { height: 38px; font-size: 13px; padding: 0 14px; }
+      .row { display: flex; gap: 8px; }
+      .tap { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; border: 3px solid #fff; opacity: 0; visibility: hidden; }
+      .input { height: 46px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); display: flex; align-items: center; padding: 0 14px; font-size: 15px; color: var(--text); overflow: hidden; white-space: nowrap; }
+      .input.code { justify-content: center; font-family: var(--mono); font-size: 26px; letter-spacing: 0.22em; height: 58px; }
+      .typed { display: inline-block; white-space: nowrap; }
+      .label { font-size: 12px; color: var(--muted); }
+      .banner { border: 1px solid var(--red); background: rgba(242,45,28,0.14); border-radius: 12px; padding: 12px; font-size: 13px; line-height: 1.4; display: flex; flex-direction: column; gap: 10px; }
+      .banner.ok { border-color: var(--ok); background: rgba(122,211,154,0.1); }
+      .bar { display: flex; align-items: center; gap: 8px; }
+      .bar .search { flex: 1; height: 38px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; color: var(--muted); display: flex; align-items: center; padding: 0 12px; }
+      .ic { width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
+      .item { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+      .item b { font-size: 16px; }
+      .item span { font-size: 13px; color: var(--muted); }
+      .fab { position: absolute; right: 18px; bottom: 22px; height: 46px; padding: 0 18px; border-radius: 12px; background: #c81e10; color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; }
+      .sheet { position: absolute; left: 10px; right: 10px; bottom: 10px; background: var(--bg2); border: 1px solid var(--line); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 12px; opacity: 0; visibility: hidden; }
+      .sheet h4 { font-family: var(--display); font-weight: 400; font-size: 28px; letter-spacing: 0.04em; }
+      .keybox { font-family: var(--mono); font-size: 15px; line-height: 1.6; word-break: break-all; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+      .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.6); opacity: 0; visibility: hidden; }
+      .toast { position: absolute; left: 24px; right: 24px; bottom: 90px; background: var(--text); color: var(--bg); border-radius: 12px; padding: 12px 14px; font-size: 13px; font-weight: 600; opacity: 0; visibility: hidden; }
+
+      /* Home screen */
+      .home { background: linear-gradient(160deg, #1d1412, #080808 60%); padding-top: 90px; }
+      .home-grid { display: grid; grid-template-columns: repeat(4, 64px); gap: 26px 18px; justify-content: center; }
+      .home-app { width: 64px; height: 64px; border-radius: 16px; background: #222; }
+      .home-new { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 50px; }
+      .home-new img { width: 96px; height: 96px; border-radius: 24px; }
+      .home-new span { font-size: 15px; }
+      .install { position: absolute; left: 50%; top: 0; width: 96px; height: 96px; margin-left: -48px; }
+      .install circle { fill: none; stroke-width: 6; }
+      .dl-chip { font-family: var(--mono); font-size: 13px; color: var(--muted); text-align: center; margin-top: 18px; }
+
+      /* Face scan */
+      .face { position: absolute; inset: 0; background: rgba(8,8,8,0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; opacity: 0; visibility: hidden; }
+      .face-box { position: relative; width: 150px; height: 150px; }
+      .face-box svg { position: absolute; inset: 0; width: 150px; height: 150px; }
+      .scanline { position: absolute; left: 10px; right: 10px; top: 10px; height: 4px; border-radius: 2px; background: var(--red); box-shadow: 0 0 18px var(--red); }
+      .face p { font-size: 16px; color: var(--text); }
+      .face .ok { width: 70px; height: 70px; border-radius: 50%; background: var(--ok); display: flex; align-items: center; justify-content: center; color: #08130c; font-size: 40px; font-weight: 800; opacity: 0; visibility: hidden; }
+
+      /* Codes ring */
+      .ring { position: relative; width: 250px; height: 250px; margin: 14px auto 6px; }
+      .ring svg { width: 250px; height: 250px; transform: rotate(-90deg); }
+      .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+      .digits { position: absolute; left: 0; right: 0; top: 98px; text-align: center; font-family: var(--mono); font-size: 34px; letter-spacing: 0.1em; opacity: 0; visibility: hidden; }
+      .left { position: absolute; left: 0; right: 0; top: 146px; text-align: center; font-family: var(--mono); font-size: 15px; color: var(--muted); }
+      .seg { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+      .seg span { height: 36px; border: 1px solid var(--line); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 14px; }
+      .seg span.on { background: var(--text); color: var(--bg); }
+
+      /* Flying code chip */
+      .chip { position: absolute; left: 1490px; top: 470px; width: 220px; height: 64px; border-radius: 16px; background: var(--text); color: var(--bg); font-family: var(--mono); font-size: 26px; letter-spacing: 0.1em; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 50px rgba(0,0,0,0.6); opacity: 0; visibility: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="80">
+      <div class="bg-grid"></div>
+      <div class="bg-glow" id="glow"></div>
+
+      <!-- INTRO -->
+      <section id="intro" class="clip center-card" data-start="0" data-duration="6" data-track-index="1">
+        <div class="icon-pair" id="intro-icons">
+          <img id="intro-vault" src="assets/icons/vault.svg" alt="" />
+          <div class="plus" id="intro-plus">+</div>
+          <img id="intro-codes" src="assets/icons/codes.svg" alt="" />
+        </div>
+        <div class="big-title" id="intro-title">TBD VAULT <span class="red">+</span> TBD CODES</div>
+        <div class="tagline" id="intro-tag">Two apps. One lock. Everything stays on your phone.</div>
+      </section>
+
+      <!-- STAGE -->
+      <section id="stage" class="clip" data-start="5.6" data-duration="68" data-track-index="2">
+        <div class="captions">
+          <div class="cap" id="cap1"><div class="num">01 / 08</div><h2>Install both apps</h2><p>Download <b>TBD Vault</b> and <b>TBD Codes</b> from this page and install them on the same phone.</p></div>
+          <div class="cap" id="cap2"><div class="num">02 / 08</div><h2>Create your vault</h2><p>Open TBD Vault, tap <b>Set up face lock</b> and approve with your face, fingerprint or PIN.</p></div>
+          <div class="cap" id="cap3"><div class="num">03 / 08</div><h2>Copy the security key</h2><p>Tap <b>Show security key</b>, then <b>Copy</b>. You only need it once, to link the two apps.</p></div>
+          <div class="cap" id="cap4"><div class="num">04 / 08</div><h2>Link TBD Codes</h2><p>Open TBD Codes, paste the key and set up face lock. A new 8-digit code appears every few seconds.</p></div>
+          <div class="cap" id="cap5"><div class="num">05 / 08</div><h2>Copy code, open vault</h2><p>Tap <b>Copy code</b> in TBD Codes, switch back and paste it into TBD Vault. You are in.</p></div>
+          <div class="cap" id="cap6"><div class="num">06 / 08</div><h2>Make your first backup</h2><p>Choose a backup password and save the encrypted file somewhere safe. It is your way back on a new phone.</p></div>
+          <div class="cap" id="cap7"><div class="num">07 / 08</div><h2>Save your passwords</h2><p>Tap <b>+ Add</b>: account, website, username and password. Copy or reveal them any time.</p></div>
+          <div class="cap" id="cap8"><div class="num">08 / 08</div><h2>Every day</h2><p><b>Face</b> on TBD Vault, <b>copy</b> the code from TBD Codes, <b>paste</b>. Three taps.</p></div>
+        </div>
+        <div class="progress" id="progress"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+        <div class="phones">
+          <!-- VAULT PHONE -->
+          <div class="phone-wrap" id="pw-vault">
+            <div class="phone"><div class="screen" data-layout-ignore>
+              <div class="scr home" id="v-home">
+                <div class="home-grid"><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div></div>
+                <div class="home-new">
+                  <img id="v-home-icon" src="assets/icons/vault.svg" alt="" />
+                  <svg class="install" viewBox="0 0 96 96" id="v-install"><circle cx="48" cy="48" r="44" stroke="#2b2b2b" /><circle id="v-install-bar" cx="48" cy="48" r="44" stroke="#f22d1c" stroke-dasharray="276.5" stroke-dashoffset="276.5" transform="rotate(-90 48 48)" /></svg>
+                  <span>TBD Vault</span>
+                </div>
+                <div class="dl-chip" id="v-dl">tbd-vault.apk · installing</div>
+              </div>
+
+              <div class="scr" id="v-setup">
+                <div class="brand"><img src="assets/icons/vault.svg" alt="" /><b>TBD VAULT</b></div>
+                <h3>Your passwords, kept on this device only</h3>
+                <div class="muted">No account, no server. Works offline once installed.</div>
+                <div class="card"><div class="muted">Face lock protects everything here. You will be asked for it each time you open the vault.</div>
+                  <div class="btn primary" id="v-setup-btn">Set up face lock and create vault<span class="tap"></span></div></div>
+                <div class="btn">Restore from an encrypted backup</div>
+              </div>
+
+              <div class="scr" id="v-code">
+                <div class="brand"><img src="assets/icons/vault.svg" alt="" /><b>TBD VAULT</b></div>
+                <h3>Security code</h3>
+                <div class="card"><div class="muted">Enter your current 8-digit code.</div>
+                  <div class="input code"><span class="typed" id="v-code-digits">4829 1736</span></div>
+                  <div class="btn primary">Open vault</div></div>
+                <div class="row"><div class="btn sec small" id="v-showkey">Show security key<span class="tap"></span></div><div class="btn small">Lock</div></div>
+                <div class="scrim" id="v-scrim"></div>
+                <div class="sheet" id="v-keysheet">
+                  <h4>Security key</h4>
+                  <div class="keybox">TBD1-078K1AHQ-1C1JTFPD-C28H7294-0KYKX5ZZ-2CMBVXPX-77EHCBSX</div>
+                  <div class="btn primary" id="v-copykey">Copy security key<span class="tap"></span></div>
+                  <div class="muted">Keep this private.</div>
+                </div>
+                <div class="toast" id="v-toast-key">Security key copied.</div>
+              </div>
+
+              <div class="scr" id="v-open">
+                <div class="bar"><img src="assets/icons/vault.svg" alt="" style="width:34px;height:34px;border-radius:9px" /><div class="search">Search accounts</div><div class="ic" id="v-backup-ic">⇩<span class="tap"></span></div><div class="ic">⚙</div></div>
+                <div class="banner" id="v-banner-first">Make your first encrypted backup before adding passwords.<div class="btn primary small" id="v-backup-btn">Create backup<span class="tap"></span></div></div>
+                <div class="banner ok" id="v-banner-ok">Backup saved. You can add passwords now.</div>
+                <div class="item" id="v-item"><b>GitHub</b><span>deepak · github.com</span></div>
+                <div class="item" id="v-item2"><b>Gmail</b><span>deepak@… · google.com</span></div>
+                <div class="fab" id="v-fab">+ Add<span class="tap"></span></div>
+                <div class="scrim" id="v-scrim2"></div>
+                <div class="sheet" id="v-backupsheet">
+                  <h4>Encrypted backup</h4>
+                  <div class="label">Backup password (at least 12 characters)</div>
+                  <div class="input"><span class="typed" id="v-bpw">••••••••••••••••</span></div>
+                  <div class="label">Repeat backup password</div>
+                  <div class="input"><span class="typed" id="v-bpw2">••••••••••••••••</span></div>
+                  <div class="btn primary" id="v-create">Create backup<span class="tap"></span></div>
+                </div>
+                <div class="sheet" id="v-savesheet">
+                  <h4>Encrypted backup</h4>
+                  <div class="banner ok">Backup is ready and was checked. Save it somewhere safe.</div>
+                  <div class="btn primary" id="v-savefile">Save backup file<span class="tap"></span></div>
+                  <div class="keybox" id="v-file">TBD-Vault-2026-10-25.tbdbackup</div>
+                </div>
+              </div>
+
+              <div class="scr" id="v-add">
+                <div class="brand"><img src="assets/icons/vault.svg" alt="" /><b>TBD VAULT</b></div>
+                <h3>Add account</h3>
+                <div class="label">Account name</div><div class="input"><span class="typed" id="f1">GitHub</span></div>
+                <div class="label">Website or platform</div><div class="input"><span class="typed" id="f2">github.com</span></div>
+                <div class="label">Username</div><div class="input"><span class="typed" id="f3">deepak</span></div>
+                <div class="label">Password</div><div class="input"><span class="typed" id="f4">••••••••••••••••••••</span></div>
+                <div class="row"><div class="btn small">Generate strong password</div></div>
+                <div class="btn primary" id="v-save">Save<span class="tap"></span></div>
+              </div>
+
+              <div class="scr" id="v-locked">
+                <div class="brand"><img src="assets/icons/vault.svg" alt="" /><b>TBD VAULT</b></div>
+                <h3>Vault locked</h3>
+                <div class="card"><div class="btn primary" id="v-unlock">Unlock with face<span class="tap"></span></div></div>
+              </div>
+
+              <div class="scr" id="v-code2">
+                <div class="brand"><img src="assets/icons/vault.svg" alt="" /><b>TBD VAULT</b></div>
+                <h3>Security code</h3>
+                <div class="card"><div class="muted">Enter your current 8-digit code.</div>
+                  <div class="input code"><span class="typed" id="v-code2-digits">7302 5518</span></div>
+                  <div class="btn primary">Open vault</div></div>
+              </div>
+
+              <div class="face" id="v-face">
+                <div class="face-box"><svg viewBox="0 0 150 150" fill="none" stroke="#f4f1ec" stroke-width="6" stroke-linecap="round"><path d="M10 45V22a12 12 0 0 1 12-12h23M105 10h23a12 12 0 0 1 12 12v23M140 105v23a12 12 0 0 1-12 12h-23M45 140H22a12 12 0 0 1-12-12v-23"/><path d="M55 58v10M95 58v10M75 62v22l-7 4M58 102c10 9 24 9 34 0"/></svg><div class="scanline" id="v-scanline"></div></div>
+                <p>Face lock</p>
+                <div class="ok" id="v-face-ok">✓</div>
+              </div>
+            </div></div>
+            <div class="phone-label"><img src="assets/icons/vault.svg" alt="" />TBD Vault</div>
+          </div>
+
+          <!-- CODES PHONE -->
+          <div class="phone-wrap" id="pw-codes">
+            <div class="phone"><div class="screen" data-layout-ignore>
+              <div class="scr home" id="c-home">
+                <div class="home-grid"><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div><div class="home-app"></div></div>
+                <div class="home-new">
+                  <img id="c-home-icon" src="assets/icons/codes.svg" alt="" />
+                  <svg class="install" viewBox="0 0 96 96"><circle cx="48" cy="48" r="44" stroke="#2b2b2b" /><circle id="c-install-bar" cx="48" cy="48" r="44" stroke="#f22d1c" stroke-dasharray="276.5" stroke-dashoffset="276.5" transform="rotate(-90 48 48)" /></svg>
+                  <span>TBD Codes</span>
+                </div>
+                <div class="dl-chip" id="c-dl">tbd-codes.apk · installing</div>
+              </div>
+
+              <div class="scr" id="c-setup">
+                <div class="brand"><img src="assets/icons/codes.svg" alt="" /><b>TBD CODES</b></div>
+                <h3>Add your security key</h3>
+                <div class="card">
+                  <div class="label">Security key</div>
+                  <div class="input" style="height:76px;align-items:flex-start;padding-top:10px;white-space:normal;font-family:var(--mono);font-size:13px;line-height:1.5"><span class="typed" id="c-key" style="white-space:normal">TBD1-078K1AHQ-1C1JTFPD-C28H7294-0KYKX5ZZ-2CMBVXPX</span></div>
+                  <div class="btn sec small">Paste from clipboard</div>
+                  <div class="muted">Face lock will protect it.</div>
+                  <div class="btn primary" id="c-save">Save and set up face lock<span class="tap"></span></div>
+                </div>
+              </div>
+
+              <div class="scr" id="c-show">
+                <div class="brand"><img src="assets/icons/codes.svg" alt="" /><b>TBD CODES</b></div>
+                <div class="ring">
+                  <svg viewBox="0 0 250 250"><circle cx="125" cy="125" r="110" fill="none" stroke="#2b2b2b" stroke-width="14" /><circle id="c-ring" cx="125" cy="125" r="110" fill="none" stroke="#f22d1c" stroke-width="14" stroke-linecap="round" stroke-dasharray="691.15" stroke-dashoffset="0" /></svg>
+                  <div class="digits" id="c-d1">4829 1736</div>
+                  <div class="digits" id="c-d2">5170 2649</div>
+                  <div class="digits" id="c-d3">9031 8854</div>
+                  <div class="digits" id="c-d4">7302 5518</div>
+                </div>
+                <div class="btn primary" id="c-copy">Copy code<span class="tap"></span></div>
+                <div class="card"><div class="label">New code every (seconds)</div><div class="seg"><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span class="on">10</span></div></div>
+                <div class="row"><div class="btn sec small">Lock</div><div class="btn small">Settings</div></div>
+                <div class="toast" id="c-toast">Code copied.</div>
+              </div>
+
+              <div class="scr" id="c-locked">
+                <div class="brand"><img src="assets/icons/codes.svg" alt="" /><b>TBD CODES</b></div>
+                <h3>Locked</h3>
+                <div class="card"><div class="btn primary" id="c-unlock">Unlock with face<span class="tap"></span></div></div>
+              </div>
+
+              <div class="face" id="c-face">
+                <div class="face-box"><svg viewBox="0 0 150 150" fill="none" stroke="#f4f1ec" stroke-width="6" stroke-linecap="round"><path d="M10 45V22a12 12 0 0 1 12-12h23M105 10h23a12 12 0 0 1 12 12v23M140 105v23a12 12 0 0 1-12 12h-23M45 140H22a12 12 0 0 1-12-12v-23"/><path d="M55 58v10M95 58v10M75 62v22l-7 4M58 102c10 9 24 9 34 0"/></svg><div class="scanline" id="c-scanline"></div></div>
+                <p>Face lock</p>
+                <div class="ok" id="c-face-ok">✓</div>
+              </div>
+            </div></div>
+            <div class="phone-label"><img src="assets/icons/codes.svg" alt="" />TBD Codes</div>
+          </div>
+        </div>
+
+        <div class="chip" id="chip">4829 1736</div>
+      </section>
+
+      <!-- OUTRO -->
+      <section id="outro" class="clip center-card" data-start="73.4" data-duration="6.6" data-track-index="3">
+        <div class="icon-pair"><img id="out-vault" src="assets/icons/vault.svg" alt="" /><div class="plus" id="out-plus">+</div><img id="out-codes" src="assets/icons/codes.svg" alt="" /></div>
+        <div class="big-title" id="out-title">EVERYTHING STAYS <span class="red">ON YOUR PHONE</span></div>
+        <div class="pills" id="out-pills"><div class="pill">No account</div><div class="pill">No server</div><div class="pill">Works offline</div></div>
+      </section>
+
+      <!-- SOUND -->
+      <audio id="bgm" src=".media/audio/bgm/bgm_001.mp3" data-start="0" data-duration="80" data-volume="0.6" data-track-index="10"></audio>
+      <audio id="tap1" src=".media/audio/sfx/sfx_001.mp3" data-start="15.5" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap2" src=".media/audio/sfx/sfx_001.mp3" data-start="22.6" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap3" src=".media/audio/sfx/sfx_001.mp3" data-start="25.2" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap4" src=".media/audio/sfx/sfx_001.mp3" data-start="33.0" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap5" src=".media/audio/sfx/sfx_001.mp3" data-start="39.0" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap6" src=".media/audio/sfx/sfx_001.mp3" data-start="48.0" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap7" src=".media/audio/sfx/sfx_001.mp3" data-start="50.6" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap8" src=".media/audio/sfx/sfx_001.mp3" data-start="52.4" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap9" src=".media/audio/sfx/sfx_001.mp3" data-start="55.6" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap10" src=".media/audio/sfx/sfx_001.mp3" data-start="59.6" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap11" src=".media/audio/sfx/sfx_001.mp3" data-start="64.4" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap12" src=".media/audio/sfx/sfx_001.mp3" data-start="66.9" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="tap13" src=".media/audio/sfx/sfx_001.mp3" data-start="68.8" data-duration="0.4" data-volume="0.45"></audio>
+      <audio id="chime1" src=".media/audio/sfx/sfx_002.mp3" data-start="42.9" data-duration="2.5" data-volume="0.35"></audio>
+      <audio id="chime2" src=".media/audio/sfx/sfx_002.mp3" data-start="53.2" data-duration="2.5" data-volume="0.35"></audio>
+      <audio id="chime3" src=".media/audio/sfx/sfx_002.mp3" data-start="70.6" data-duration="2.5" data-volume="0.35"></audio>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const E = 'power3.out';
+
+      // ---------- helpers (all absolute times, seconds) ----------
+      const on = (s, t) => tl.set(s, { autoAlpha: 1 }, t);
+      const off = (s, t) => tl.set(s, { autoAlpha: 0 }, t);
+      const fadeIn = (s, t, d = 0.35) => tl.fromTo(s, { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: d, ease: E }, t);
+      const fadeOut = (s, t, d = 0.25) => tl.to(s, { autoAlpha: 0, duration: d, ease: 'power1.in' }, t);
+      const tap = (btn, t) => {
+        tl.fromTo(`${btn} .tap`, { autoAlpha: 0.9, scale: 0.3 }, { autoAlpha: 0, scale: 2.4, duration: 0.55, ease: 'power2.out', immediateRender: false }, t);
+        tl.fromTo(btn, { scale: 1 }, { scale: 0.94, duration: 0.08, ease: 'power1.out', immediateRender: false }, t);
+        tl.to(btn, { scale: 1, duration: 0.18, ease: 'back.out(3)' }, t + 0.08);
+      };
+      const type = (s, t, d, steps) => tl.fromTo(s, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: d, ease: `steps(${steps})` }, t);
+      const faceScan = (p, t) => {
+        fadeIn(`#${p}-face`, t, 0.25);
+        tl.fromTo(`#${p}-scanline`, { y: 0 }, { y: 126, duration: 0.6, ease: 'sine.inOut', repeat: 1, yoyo: true }, t + 0.2);
+        tl.fromTo(`#${p}-face-ok`, { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, duration: 0.3, ease: 'back.out(2)' }, t + 1.45);
+        fadeOut(`#${p}-face`, t + 2.0, 0.25);
+      };
+      const focus = (vault, codes, t) => {
+        tl.to('#pw-vault', { opacity: vault ? 1 : 0.32, scale: vault ? 1 : 0.95, duration: 0.5, ease: 'power2.inOut' }, t);
+        tl.to('#pw-codes', { opacity: codes ? 1 : 0.32, scale: codes ? 1 : 0.95, duration: 0.5, ease: 'power2.inOut' }, t);
+      };
+      const caption = (n, start, end) => {
+        tl.fromTo(`#cap${n}`, { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: E }, start);
+        tl.to(`#cap${n}`, { autoAlpha: 0, y: -30, duration: 0.35, ease: 'power1.in' }, end - 0.35);
+        tl.set(`#progress span:nth-child(${n})`, { backgroundColor: '#f22d1c' }, start);
+      };
+
+      // ---------- background ----------
+      tl.fromTo('#glow', { x: 0, y: 0 }, { x: -700, y: 220, duration: 80, ease: 'sine.inOut' }, 0);
+
+      // ---------- intro 0–6 ----------
+      tl.fromTo('#intro-vault', { scale: 0.92, rotate: -6 }, { scale: 1, rotate: 0, duration: 1.2, ease: 'back.out(1.7)' }, 0);
+      
+      tl.fromTo('#intro-codes', { scale: 0.92, rotate: 6 }, { scale: 1, rotate: 0, duration: 1.2, ease: 'back.out(1.7)' }, 0.1);
+      tl.fromTo('#intro-title', { autoAlpha: 0, y: 50 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: E }, 0.6);
+      tl.fromTo('#intro-tag', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: E }, 1.3);
+      tl.to(['#intro-icons', '#intro-title', '#intro-tag'], { autoAlpha: 0, y: -40, duration: 0.5, ease: 'power2.in', stagger: 0.06 }, 5.1);
+
+      // ---------- stage entrance ----------
+      tl.fromTo('.phones', { autoAlpha: 0, x: 120 }, { autoAlpha: 1, x: 0, duration: 0.9, ease: E }, 5.6);
+      tl.fromTo('#progress', { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.6 }, 6.0);
+
+      // 1. Install 6–13
+      caption(1, 6.0, 13.0);
+      on('#v-home', 5.6); on('#c-home', 5.6);
+      tl.fromTo('#v-install-bar', { strokeDashoffset: 276.5 }, { strokeDashoffset: 0, duration: 3.2, ease: 'power1.inOut' }, 7.0);
+      tl.fromTo('#c-install-bar', { strokeDashoffset: 276.5 }, { strokeDashoffset: 0, duration: 3.2, ease: 'power1.inOut' }, 7.6);
+      tl.fromTo(['#v-home-icon', '#c-home-icon'], { filter: 'grayscale(1) brightness(0.5)' }, { filter: 'grayscale(0) brightness(1)', duration: 0.6, stagger: 0.6 }, 10.2);
+      tl.to(['#v-install', '#c-install-bar'], { autoAlpha: 0, duration: 0.3, stagger: 0.6 }, 10.4);
+      tl.to('.home .install', { autoAlpha: 0, duration: 0.3 }, 11.0);
+      tl.set('#v-dl', { textContent: 'tbd-vault.apk · installed ✓' }, 10.5);
+      tl.set('#c-dl', { textContent: 'tbd-codes.apk · installed ✓' }, 11.1);
+
+      // 2. Create vault 13–21
+      caption(2, 13.0, 21.0);
+      focus(true, false, 13.0);
+      off('#v-home', 13.0); fadeIn('#v-setup', 13.0);
+      off('#c-home', 13.0); on('#c-setup', 13.0);
+      tap('#v-setup-btn', 15.5);
+      faceScan('v', 16.0);
+      off('#v-setup', 18.1); on('#v-code', 18.1);
+      tl.set('#v-code-digits', { clipPath: 'inset(0 100% 0 0)' }, 18.1);
+
+      // 3. Copy security key 21–29
+      caption(3, 21.0, 29.0);
+      tap('#v-showkey', 22.6);
+      fadeIn('#v-scrim', 22.9, 0.3);
+      tl.fromTo('#v-keysheet', { autoAlpha: 0, y: 120 }, { autoAlpha: 1, y: 0, duration: 0.45, ease: E }, 22.9);
+      tap('#v-copykey', 25.2);
+      fadeIn('#v-toast-key', 25.4);
+      fadeOut('#v-toast-key', 27.6);
+      tl.to('#v-keysheet', { autoAlpha: 0, y: 120, duration: 0.35, ease: 'power2.in' }, 27.0);
+      fadeOut('#v-scrim', 27.0);
+
+      // 4. Link TBD Codes 29–38
+      caption(4, 29.0, 38.0);
+      focus(false, true, 29.0);
+      type('#c-key', 30.2, 1.6, 12);
+      tap('#c-save', 33.0);
+      faceScan('c', 33.4);
+      off('#c-setup', 35.5); on('#c-show', 35.5);
+      on('#c-d1', 35.5);
+
+      // Codes ring: one 10 s interval per code, deterministic
+      const ringLen = 691.15;
+      tl.fromTo('#c-ring', { strokeDashoffset: ringLen * 0.15 }, { strokeDashoffset: ringLen, duration: 8.5, ease: 'none' }, 35.5);
+      off('#c-d1', 44.0); on('#c-d2', 44.0);
+      tl.fromTo('#c-ring', { strokeDashoffset: 0 }, { strokeDashoffset: ringLen, duration: 10, ease: 'none', immediateRender: false }, 44.0);
+      off('#c-d2', 54.0); on('#c-d3', 54.0);
+      tl.fromTo('#c-ring', { strokeDashoffset: 0 }, { strokeDashoffset: ringLen * 0.9, duration: 9, ease: 'none', immediateRender: false }, 54.0);
+
+      // 5. Copy code, open vault 38–47
+      caption(5, 38.0, 47.0);
+      focus(true, true, 38.0);
+      tap('#c-copy', 39.0);
+      fadeIn('#c-toast', 39.2); fadeOut('#c-toast', 41.2);
+      tl.fromTo('#chip', { autoAlpha: 0, x: 0, y: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.3, ease: 'back.out(2)' }, 39.4);
+      tl.to('#chip', { x: -448, y: 10, duration: 1.0, ease: 'power3.inOut' }, 39.8);
+      tl.to('#chip', { autoAlpha: 0, scale: 0.6, duration: 0.25 }, 40.8);
+      type('#v-code-digits', 40.9, 1.0, 9);
+      off('#v-code', 42.7); fadeIn('#v-open', 42.7);
+      off('#v-banner-ok', 42.7); off('#v-item', 42.7); off('#v-item2', 42.7);
+
+      // 6. First backup 47–55
+      caption(6, 47.0, 55.0);
+      focus(true, false, 47.0);
+      tap('#v-backup-btn', 48.0);
+      fadeIn('#v-scrim2', 48.3, 0.3);
+      tl.fromTo('#v-backupsheet', { autoAlpha: 0, y: 140 }, { autoAlpha: 1, y: 0, duration: 0.45, ease: E }, 48.3);
+      type('#v-bpw', 48.9, 0.7, 16);
+      type('#v-bpw2', 49.7, 0.7, 16);
+      tap('#v-create', 50.6);
+      off('#v-backupsheet', 51.3);
+      tl.fromTo('#v-savesheet', { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.35, ease: E }, 51.3);
+      off('#v-file', 51.3);
+      tap('#v-savefile', 52.4);
+      tl.fromTo('#v-file', { autoAlpha: 0, y: -20 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'back.out(2)' }, 52.7);
+      tl.to('#v-savesheet', { autoAlpha: 0, y: 140, duration: 0.35, ease: 'power2.in' }, 53.9);
+      fadeOut('#v-scrim2', 53.9);
+      off('#v-banner-first', 54.2); fadeIn('#v-banner-ok', 54.2);
+
+      // 7. Save passwords 55–63
+      caption(7, 55.0, 63.0);
+      tap('#v-fab', 55.6);
+      off('#v-open', 56.0); fadeIn('#v-add', 56.0);
+      type('#f1', 56.6, 0.5, 6);
+      type('#f2', 57.2, 0.6, 10);
+      type('#f3', 57.9, 0.5, 6);
+      type('#f4', 58.5, 0.8, 20);
+      tap('#v-save', 59.6);
+      off('#v-add', 60.1); on('#v-open', 60.1);
+      off('#v-banner-ok', 60.1);
+      tl.fromTo('#v-item', { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.45, ease: E }, 60.3);
+      tl.fromTo('#v-item2', { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.45, ease: E }, 61.2);
+
+      // 8. Every day 63–73
+      caption(8, 63.0, 73.2);
+      focus(true, false, 63.0);
+      off('#v-open', 63.3); fadeIn('#v-locked', 63.3);
+      off('#c-show', 63.3); on('#c-locked', 63.3);
+      tap('#v-unlock', 64.4);
+      faceScan('v', 64.7);
+      off('#v-locked', 66.8); on('#v-code2', 66.8);
+      tl.set('#v-code2-digits', { clipPath: 'inset(0 100% 0 0)' }, 66.8);
+      focus(false, true, 66.6);
+      tap('#c-unlock', 66.9);
+      tl.fromTo('#c-face', { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 }, 67.1);
+      tl.fromTo('#c-scanline', { y: 0 }, { y: 126, duration: 0.45, ease: 'sine.inOut' }, 67.2);
+      tl.fromTo('#c-face-ok', { autoAlpha: 0, scale: 0.4 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: 'back.out(2)', immediateRender: false }, 67.7);
+      tl.to('#c-face', { autoAlpha: 0, duration: 0.2 }, 68.1);
+      off('#c-locked', 68.2); on('#c-show', 68.2);
+      off('#c-d3', 68.2); on('#c-d4', 68.2);
+      tl.fromTo('#c-ring', { strokeDashoffset: ringLen * 0.2 }, { strokeDashoffset: ringLen * 0.65, duration: 5, ease: 'none', immediateRender: false }, 68.2);
+      tap('#c-copy', 68.8);
+      tl.set('#chip', { textContent: '7302 5518', x: 0, y: 0 }, 69.0);
+      tl.fromTo('#chip', { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: 'back.out(2)', immediateRender: false }, 69.0);
+      tl.to('#chip', { x: -448, y: 10, duration: 0.8, ease: 'power3.inOut' }, 69.3);
+      tl.to('#chip', { autoAlpha: 0, scale: 0.6, duration: 0.2 }, 70.1);
+      focus(true, false, 69.5);
+      type('#v-code2-digits', 70.1, 0.5, 9);
+      off('#v-code2', 70.7); fadeIn('#v-open', 70.7);
+      tl.set(['#v-item', '#v-item2'], { autoAlpha: 1, x: 0 }, 70.7);
+      focus(true, true, 71.6);
+      tl.to('.phones', { autoAlpha: 0, x: 80, duration: 0.5, ease: 'power2.in' }, 72.9);
+      tl.to('#progress', { autoAlpha: 0, duration: 0.4 }, 72.9);
+
+      // ---------- outro 73.4–80 ----------
+      tl.fromTo(['#out-vault', '#out-plus', '#out-codes'], { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: E, stagger: 0.12 }, 73.6);
+      tl.fromTo('#out-title', { autoAlpha: 0, y: 50 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: E }, 74.2);
+      tl.fromTo('#out-pills .pill', { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: E, stagger: 0.15 }, 75.0);
+
+      // ---------- music fade ----------
+      tl.fromTo('#bgm', { volume: 0.6 }, { volume: 0, duration: 4, ease: 'power1.in' }, 76);
+
+      window.__timelines['main'] = tl;
+    </script>
+  </body>
+</html>

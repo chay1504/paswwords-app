@@ -1,4 +1,4 @@
-// Local preview of the built sites: Vault on :5173, Codes on :5174.
+// Local preview of the built sites: Vault on :5173, Codes on :5174, landing site on :5175.
 // They are different origins, so each gets its own private storage, as when deployed.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -10,7 +10,7 @@ const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.svg': 'image/svg+xml',
-  '.png': 'image/png', '.ttf': 'font/ttf', '.txt': 'text/plain; charset=utf-8',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.ttf': 'font/ttf', '.txt': 'text/plain; charset=utf-8',
 };
 
 function serve(portal, port) {
@@ -23,7 +23,7 @@ function serve(portal, port) {
       if (!file.startsWith(base)) throw new Error('outside');
       if (!(await stat(file)).isFile()) throw new Error('not a file');
       const headers = { ...SECURITY_HEADERS, 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' };
-      if (REVALIDATE_PATHS.includes(path)) headers['Cache-Control'] = REVALIDATE;
+      if (REVALIDATE_PATHS.includes(path) || /\/(vault|codes)\/(index\.html|sw\.js|manifest\.webmanifest)$/.test(path)) headers['Cache-Control'] = REVALIDATE;
       res.writeHead(200, headers).end(await readFile(file));
     } catch {
       res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
@@ -33,3 +33,4 @@ function serve(portal, port) {
 
 serve('vault', 5173);
 serve('codes', 5174);
+serve('site', 5175);

@@ -6,6 +6,7 @@ export const CSP = [
   "style-src 'self'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
+  "media-src 'self'",
   "connect-src 'self'",
   "manifest-src 'self'",
   "worker-src 'self'",
@@ -29,21 +30,25 @@ export const HSTS = { 'Strict-Transport-Security': 'max-age=63072000; includeSub
 // Pages and the service worker must always be revalidated so updates arrive.
 export const REVALIDATE = 'public, max-age=0, must-revalidate';
 export const REVALIDATE_PATHS = ['/', '/index.html', '/sw.js', '/manifest.webmanifest'];
+// The combined site serves both apps under /vault/ and /codes/.
+export const SITE_REVALIDATE_PATHS = [
+  ...REVALIDATE_PATHS,
+  ...['vault', 'codes'].flatMap((app) => [`/${app}/`, `/${app}/index.html`, `/${app}/sw.js`, `/${app}/manifest.webmanifest`]),
+];
 
-export function netlifyHeaders() {
+export function netlifyHeaders(paths = SITE_REVALIDATE_PATHS) {
   const lines = ['/*', ...Object.entries({ ...SECURITY_HEADERS, ...HSTS }).map(([k, v]) => `  ${k}: ${v}`)];
-  for (const path of REVALIDATE_PATHS) lines.push(path, `  Cache-Control: ${REVALIDATE}`);
+  for (const path of paths) lines.push(path, `  Cache-Control: ${REVALIDATE}`);
   return `${lines.join('\n')}\n`;
 }
 
-export function vercelConfig() {
+export function vercelConfig(paths = SITE_REVALIDATE_PATHS) {
   const toList = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
   return {
     cleanUrls: false,
-    trailingSlash: false,
     headers: [
       { source: '/(.*)', headers: toList({ ...SECURITY_HEADERS, ...HSTS }) },
-      ...REVALIDATE_PATHS.map((source) => ({ source, headers: toList({ 'Cache-Control': REVALIDATE }) })),
+      ...paths.map((source) => ({ source, headers: toList({ 'Cache-Control': REVALIDATE }) })),
     ],
   };
 }
